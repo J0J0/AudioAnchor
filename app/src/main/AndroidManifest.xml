@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.prangesoftwaresolutions.audioanchor">
+    package="com.prangesoftwaresolutions.audioanchormod">
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -24,14 +24,14 @@
         android:theme="@style/AppTheme"
         android:requestLegacyExternalStorage="true">
         <activity
-            android:name=".activities.DirectoryActivity"
+            android:name="com.prangesoftwaresolutions.audioanchormod.activities.DirectoryActivity"
             android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.prangesoftwaresolutions.audioanchor.activities.MainActivity" />
+                android:value="com.prangesoftwaresolutions.audioanchormod.activities.MainActivity" />
         </activity>
         <activity
-            android:name=".activities.MainActivity"
+            android:name="com.prangesoftwaresolutions.audioanchormod.activities.MainActivity"
             android:screenOrientation="portrait"
             android:exported="true">
             <intent-filter>
@@ -42,43 +42,43 @@
         </activity>
 
         <provider
-            android:name=".data.AnchorProvider"
+            android:name="com.prangesoftwaresolutions.audioanchormod.data.AnchorProvider"
             android:authorities="${applicationId}"
             android:enabled="true"
             android:exported="false" />
 
         <activity
-            android:name=".activities.AlbumActivity"
+            android:name="com.prangesoftwaresolutions.audioanchormod.activities.AlbumActivity"
             android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.prangesoftwaresolutions.audioanchor.activities.MainActivity" />
+                android:value="com.prangesoftwaresolutions.audioanchormod.activities.MainActivity" />
         </activity>
         <activity
-            android:name=".activities.PlayActivity"
+            android:name="com.prangesoftwaresolutions.audioanchormod.activities.PlayActivity"
             android:clearTaskOnLaunch="true"
             android:launchMode="singleTask"
             android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.prangesoftwaresolutions.audioanchor.activities.AlbumActivity" />
+                android:value="com.prangesoftwaresolutions.audioanchormod.activities.AlbumActivity" />
         </activity>
         <activity
-            android:name=".activities.SettingsActivity"
+            android:name="com.prangesoftwaresolutions.audioanchormod.activities.SettingsActivity"
             android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.prangesoftwaresolutions.audioanchor.activities.MainActivity" />
+                android:value="com.prangesoftwaresolutions.audioanchormod.activities.MainActivity" />
         </activity>
-        <activity android:name=".activities.AboutActivity">
+        <activity android:name="com.prangesoftwaresolutions.audioanchormod.activities.AboutActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.prangesoftwaresolutions.audioanchor.activities.MainActivity" />
+                android:value="com.prangesoftwaresolutions.audioanchormod.activities.MainActivity" />
         </activity>
 
-        <service android:name=".services.MediaPlayerService" />
+        <service android:name="com.prangesoftwaresolutions.audioanchormod.services.MediaPlayerService" />
 
-        <receiver android:name=".receivers.MediaButtonIntentReceiver"
+        <receiver android:name="com.prangesoftwaresolutions.audioanchormod.receivers.MediaButtonIntentReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />

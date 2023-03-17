@@ -5,7 +5,7 @@ plugins {
 android {
     compileSdk = 32
     defaultConfig {
-        applicationId = "com.prangesoftwaresolutions.audioanchor"
+        applicationId = "com.prangesoftwaresolutions.audioanchormod"
         minSdk = 19
         targetSdk = 29
         versionCode = 28
