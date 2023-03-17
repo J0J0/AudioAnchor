@@ -14,6 +14,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.database.MatrixCursor;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -304,6 +305,46 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
         // Set the text of the empty view
         mEmptyTV.setText(R.string.no_albums);
+
+        // TODO branch on preference value
+        MatrixCursor mc = new MatrixCursor(cursor.getColumnNames(), cursor.getCount());
+        ArrayList<Object[]> finishedAlbums = new ArrayList<>();
+        ArrayList<Object[]> freshAlbums = new ArrayList<>();
+
+        if (cursor.moveToFirst()) {
+            Cursor c = cursor;
+            do {
+                long albumId = c.getLong(c.getColumnIndexOrThrow(AnchorContract.AlbumEntry._ID));
+                int[] albumTimes = DBAccessUtils.getAlbumTimes(this, albumId); // {completed, duration}
+                Object[] data =
+                    { albumId
+                    , c.getString(c.getColumnIndexOrThrow(AnchorContract.AlbumEntry.COLUMN_TITLE))
+                    , c.getLong(c.getColumnIndexOrThrow(AnchorContract.AlbumEntry.COLUMN_DIRECTORY))
+                    , c.getString(c.getColumnIndexOrThrow(AnchorContract.AlbumEntry.COLUMN_COVER_PATH))
+                    , c.getLong(c.getColumnIndexOrThrow(AnchorContract.AlbumEntry.COLUMN_LAST_PLAYED))
+                    };
+
+                if (albumTimes[0] == 0) {
+                    // album not started yet
+                    freshAlbums.add(data);
+                } else if (albumTimes[0] == albumTimes[1]) {
+                    // album finished
+                    finishedAlbums.add(data);
+                } else {
+                    // album started but unfinished
+                    mc.addRow(data);
+                }
+            } while (cursor.moveToNext());
+
+            for (Object[] data : freshAlbums) {
+                mc.addRow(data);
+            }
+            for (Object[] data : finishedAlbums) {
+                mc.addRow(data);
+            }
+
+            cursor = mc;
+        }
 
         if (mPlayer != null) {
             long albumId = mPlayer.getCurrentAudioFile().getAlbumId();
