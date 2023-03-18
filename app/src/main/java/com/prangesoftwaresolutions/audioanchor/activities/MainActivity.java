@@ -343,6 +343,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
                 mc.addRow(data);
             }
 
+            c.close();
             cursor = mc;
         }
 
