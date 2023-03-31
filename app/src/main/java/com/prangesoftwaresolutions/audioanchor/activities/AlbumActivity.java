@@ -14,8 +14,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.MatrixCursor;
-import android.icu.text.Collator;
-import android.icu.text.RuleBasedCollator;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -334,16 +332,10 @@ public class AlbumActivity extends AppCompatActivity implements LoaderManager.Lo
 
     @Override
     public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
-        String[] projection = {
-                AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry._ID,
-                AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_TITLE,
-        };
-
         String sel = AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_ALBUM + "=?";
         String[] selArgs = {Long.toString(mAlbum.getID())};
-        String sortOrder = "CAST(" + AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_TITLE + " as SIGNED) ASC, LOWER(" + AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_TITLE + ") ASC";
 
-        return new CursorLoader(this, AnchorContract.AudioEntry.CONTENT_URI, projection, sel, selArgs, sortOrder);
+        return new CursorLoader(this, AnchorContract.AudioEntry.CONTENT_URI, AudioFile.getColumns(), sel, selArgs, null);
     }
 
     @Override
@@ -374,28 +366,18 @@ public class AlbumActivity extends AppCompatActivity implements LoaderManager.Lo
         mAlbumInfoTitleTV.setText(mAlbum.getTitle());
 
         // Apply natural sort
-        if (cursor.moveToFirst()) {
-            Cursor c = cursor;
-            ArrayList<Object[]> audiofiles = new ArrayList<>();
+        Log.e("AlbumActivity", "sorting naturally now");
+        if (cursor.getCount() >= 1) {
+            ArrayList<AudioFile> audioFiles = AudioFile.collectAudioFilesFromCursor(this, cursor);
+            AudioFile.sortAudioFilesNaturally(audioFiles);
 
-            do {
-                long fileId = c.getLong(c.getColumnIndexOrThrow(AnchorContract.AudioEntry._ID));
-                String fileName = c.getString(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_TITLE));
-                Object[] data = {fileId, fileName};
-
-                audiofiles.add(data);
-            } while (cursor.moveToNext());
-
-            RuleBasedCollator collator = Collator.getInstance(); // gets collator for default (i.e. host) locale
-            collator.setNumericCollation(true);
-            audiofiles.sort((Object[] a1, Object[] a2) -> (collator.compare(a1[1], a2[1])));
-
-            MatrixCursor mc = new MatrixCursor(c.getColumnNames(), c.getCount());
-            for (Object[] data : audiofiles) {
-                mc.add(data);
+            MatrixCursor mc = new MatrixCursor(cursor.getColumnNames(), cursor.getCount());
+            for (AudioFile a : audioFiles) {
+                Object[] data = {a.getID(), a.getTitle(), a.getAlbumId(), a.getTime(), a.getCompletedTime()};
+                mc.addRow(data);
             }
 
-            c.close();
+            cursor.close();
             cursor = mc;
         }
 
