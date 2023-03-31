@@ -13,6 +13,9 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.database.MatrixCursor;
+import android.icu.text.Collator;
+import android.icu.text.RuleBasedCollator;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -369,6 +372,32 @@ public class AlbumActivity extends AppCompatActivity implements LoaderManager.Lo
         mAlbumInfoTimeTV.setText(timeStr);
 
         mAlbumInfoTitleTV.setText(mAlbum.getTitle());
+
+        // Apply natural sort
+        if (cursor.moveToFirst()) {
+            Cursor c = cursor;
+            ArrayList<Object[]> audiofiles = new ArrayList<>();
+
+            do {
+                long fileId = c.getLong(c.getColumnIndexOrThrow(AnchorContract.AudioEntry._ID));
+                String fileName = c.getString(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_TITLE));
+                Object[] data = {fileId, fileName};
+
+                audiofiles.add(data);
+            } while (cursor.moveToNext());
+
+            RuleBasedCollator collator = Collator.getInstance(); // gets collator for default (i.e. host) locale
+            collator.setNumericCollation(true);
+            audiofiles.sort((Object[] a1, Object[] a2) -> (collator.compare(a1[1], a2[1])));
+
+            MatrixCursor mc = new MatrixCursor(c.getColumnNames(), c.getCount());
+            for (Object[] data : audiofiles) {
+                mc.add(data);
+            }
+
+            c.close();
+            cursor = mc;
+        }
 
         // Swap the new cursor in. The framework will take care of closing the old cursor
         mCursorAdapter.swapCursor(cursor);
