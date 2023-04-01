@@ -4,6 +4,8 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.icu.text.Collator;
+import android.icu.text.RuleBasedCollator;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 
@@ -80,6 +82,10 @@ public class AudioFile implements Serializable {
         mCompletedTime = completedTime;
     }
 
+    static public String[] getColumns() {
+        return mAudioFileColumns;
+    }
+
     /*
      * Retrieve audio file duration from metadata.
      */
@@ -141,12 +147,20 @@ public class AudioFile implements Serializable {
      * Get all audio files in the given album
      */
     public static ArrayList<AudioFile> getAllAudioFilesInAlbum(Context context, long albumId, String sortOrder) {
-        ArrayList<AudioFile> audioFiles = new ArrayList<>();
         String sel = AnchorContract.AudioEntry.COLUMN_ALBUM + "=?";
         String[] selArgs = {Long.toString(albumId)};
 
         Cursor c = context.getContentResolver().query(AnchorContract.AudioEntry.CONTENT_URI,
                 mAudioFileColumns, sel, selArgs, sortOrder, null);
+
+        return collectAudioFilesFromCursor(context, c);
+    }
+
+    /*
+     * Collect audio files into an ArrayList from a provided cursor
+     */
+    public static ArrayList<AudioFile> collectAudioFilesFromCursor(Context context, Cursor c) {
+        ArrayList<AudioFile> audioFiles = new ArrayList<>();
 
         // Bail early if the cursor is null
         if (c == null) {
@@ -168,12 +182,21 @@ public class AudioFile implements Serializable {
     /*
      * Create an Audio File from a cursor that is already at the correct position
      */
-    private static AudioFile getAudioFileFromPositionedCursor(Context context, Cursor c) {
+    public static AudioFile getAudioFileFromPositionedCursor(Context context, Cursor c) {
         long id = c.getLong(c.getColumnIndexOrThrow(AnchorContract.AudioEntry._ID));
         String title = c.getString(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_TITLE));
         long albumId = c.getLong(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_ALBUM));
         int completedTime = c.getInt(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_COMPLETED_TIME));
         int time = c.getInt(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_TIME));
         return new AudioFile(context, id, title, albumId, time, completedTime);
+    }
+
+    /*
+     * Sort audio files naturally, i.e. such that "Track 10" is followed by "Track 11" and not "Track 100".
+     */
+    public static void sortAudioFilesNaturally(ArrayList<AudioFile> audioFiles) {
+        RuleBasedCollator collator = (RuleBasedCollator) Collator.getInstance(); // gets collator for default (i.e. host) locale
+        collator.setNumericCollation(true);
+        audioFiles.sort((AudioFile a1, AudioFile a2) -> (collator.compare(a1.getTitle(), a2.getTitle())));
     }
 }

@@ -13,6 +13,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.database.MatrixCursor;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -331,16 +332,10 @@ public class AlbumActivity extends AppCompatActivity implements LoaderManager.Lo
 
     @Override
     public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
-        String[] projection = {
-                AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry._ID,
-                AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_TITLE,
-        };
-
         String sel = AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_ALBUM + "=?";
         String[] selArgs = {Long.toString(mAlbum.getID())};
-        String sortOrder = "CAST(" + AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_TITLE + " as SIGNED) ASC, LOWER(" + AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_TITLE + ") ASC";
 
-        return new CursorLoader(this, AnchorContract.AudioEntry.CONTENT_URI, projection, sel, selArgs, sortOrder);
+        return new CursorLoader(this, AnchorContract.AudioEntry.CONTENT_URI, AudioFile.getColumns(), sel, selArgs, null);
     }
 
     @Override
@@ -369,6 +364,22 @@ public class AlbumActivity extends AppCompatActivity implements LoaderManager.Lo
         mAlbumInfoTimeTV.setText(timeStr);
 
         mAlbumInfoTitleTV.setText(mAlbum.getTitle());
+
+        // Apply natural sort
+        Log.e("AlbumActivity", "sorting naturally now");
+        if (cursor.getCount() >= 1) {
+            ArrayList<AudioFile> audioFiles = AudioFile.collectAudioFilesFromCursor(this, cursor);
+            AudioFile.sortAudioFilesNaturally(audioFiles);
+
+            MatrixCursor mc = new MatrixCursor(cursor.getColumnNames(), cursor.getCount());
+            for (AudioFile a : audioFiles) {
+                Object[] data = {a.getID(), a.getTitle(), a.getAlbumId(), a.getTime(), a.getCompletedTime()};
+                mc.addRow(data);
+            }
+
+            cursor.close();
+            cursor = mc;
+        }
 
         // Swap the new cursor in. The framework will take care of closing the old cursor
         mCursorAdapter.swapCursor(cursor);

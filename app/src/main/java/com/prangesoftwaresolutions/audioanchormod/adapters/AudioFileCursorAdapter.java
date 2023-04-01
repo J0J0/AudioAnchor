@@ -46,9 +46,7 @@ public class AudioFileCursorAdapter extends CursorAdapter {
 
     @Override
     public void bindView(View view, Context context, Cursor cursor) {
-        // Get the path to the audio file
-        long audioID = cursor.getLong(cursor.getColumnIndexOrThrow(AnchorContract.AudioEntry._ID));
-        AudioFile audioFile = AudioFile.getAudioFileById(mContext, audioID);
+        AudioFile audioFile = AudioFile.getAudioFileFromPositionedCursor(mContext, cursor);
 
         // Get the title of the current audio file and set this text to the titleTV
         TextView titleTV = view.findViewById(R.id.audio_file_item_title);
@@ -91,7 +89,7 @@ public class AudioFileCursorAdapter extends CursorAdapter {
         } else {
             thumbnailIV.setBackgroundResource(R.drawable.ic_unchecked);
         }
-        if (isCurrentItemActive(audioID)) {
+        if (isCurrentItemActive(audioFile.getID())) {
             thumbnailIV.setImageResource(R.drawable.ic_playing);
         } else if (audioFile.getCompletedTime() >= audioFile.getTime() && audioFile.getTime() != 0) {
             thumbnailIV.setImageResource(R.drawable.ic_checked);
