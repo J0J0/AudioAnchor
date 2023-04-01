@@ -22,7 +22,10 @@ public class DBAccessUtils {
      */
     public static int[] getAlbumTimes(Context context, long albumID) {
         // Query the database for the track completion times
-        String[] columns = new String[]{AnchorContract.AudioEntry.COLUMN_COMPLETED_TIME, AnchorContract.AudioEntry.COLUMN_TIME};
+        String[] columns =
+            new String[]{ "SUM(" + AnchorContract.AudioEntry.COLUMN_COMPLETED_TIME + ")"
+                        , "SUM(" + AnchorContract.AudioEntry.COLUMN_TIME + ")"
+                        };
         String sel = AnchorContract.AudioEntry.COLUMN_ALBUM + "=?";
         String[] selArgs = {Long.toString(albumID)};
 
@@ -38,17 +41,9 @@ public class DBAccessUtils {
             return times;
         }
 
-        // Loop through the database rows and sum up the audio durations and completed times
-        int sumDuration = 0;
-        int sumCompletedTime = 0;
-        while (c.moveToNext()) {
-            sumDuration += c.getInt(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_TIME));
-            sumCompletedTime += c.getInt(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_COMPLETED_TIME));
-        }
-        c.close();
-
-        times[0] = sumCompletedTime;
-        times[1] = sumDuration;
+        c.moveToFirst();
+        times[0] = c.getInt(0);
+        times[1] = c.getInt(1);
         return times;
     }
 
