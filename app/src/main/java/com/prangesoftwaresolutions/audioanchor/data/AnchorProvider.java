@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import android.util.Log;
 
 import java.io.File;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 
 /**
@@ -34,6 +35,7 @@ public class AnchorProvider extends ContentProvider {
     private static final int ALBUM = 200;
     private static final int ALBUM_ID = 201;
     private static final int ALBUM_DISTINCT = 210;
+    private static final int ALBUM_WITH_TIMES = 220;
 
     private static final int BOOKMARK = 300;
     private static final int BOOKMARK_ID = 301;
@@ -54,6 +56,7 @@ public class AnchorProvider extends ContentProvider {
         sUriMatcher.addURI(AnchorContract.CONTENT_AUTHORITY, AnchorContract.PATH_ALBUM, ALBUM);
         sUriMatcher.addURI(AnchorContract.CONTENT_AUTHORITY, AnchorContract.PATH_ALBUM + "/#", ALBUM_ID);
         sUriMatcher.addURI(AnchorContract.CONTENT_AUTHORITY, AnchorContract.PATH_ALBUM_DISTINCT, ALBUM_DISTINCT);
+        sUriMatcher.addURI(AnchorContract.CONTENT_AUTHORITY, AnchorContract.PATH_ALBUM_WITH_TIMES, ALBUM_WITH_TIMES);
         // URIs for the bookmarks table
         sUriMatcher.addURI(AnchorContract.CONTENT_AUTHORITY, AnchorContract.PATH_BOOKMARK, BOOKMARK);
         sUriMatcher.addURI(AnchorContract.CONTENT_AUTHORITY, AnchorContract.PATH_BOOKMARK + "/#", BOOKMARK_ID);
@@ -98,6 +101,26 @@ public class AnchorProvider extends ContentProvider {
                 // Query the album table with the given parameters
                 cursor = database.query(AnchorContract.AlbumEntry.TABLE_NAME, projection, selection, selectionArgs,
                         null, null, sortOrder);
+                break;
+            case ALBUM_WITH_TIMES:
+                // Augment album table by album total times and get a cursor for all(!) columns
+                cursor = database.rawQuery(MessageFormat.format(
+                    "select {0}.*" +
+                        " , SUM({1}.{4}) as total_completed_time" +
+                        " , SUM({1}.{5}) as total_time" +
+                        " from {0}" +
+                        " left join {1} on {0}.{2}={1}.{3}" +
+                        " group by {0}.{2}" +
+                        " order by total_completed_time=total_time ASC, total_completed_time>0 DESC" +
+                                ", " + sortOrder + // "null" is fine here in SQL
+                        ";",
+                        AnchorContract.AlbumEntry.TABLE_NAME,
+                        AnchorContract.AudioEntry.TABLE_NAME,
+                        AnchorContract.AlbumEntry._ID,
+                        AnchorContract.AudioEntry.COLUMN_ALBUM,
+                        AnchorContract.AudioEntry.COLUMN_COMPLETED_TIME,
+                        AnchorContract.AudioEntry.COLUMN_TIME),
+                    null);
                 break;
             case BOOKMARK:
                 // Query the bookmarks table with the given parameters
@@ -189,6 +212,8 @@ public class AnchorProvider extends ContentProvider {
                 return AnchorContract.AudioEntry.CONTENT_LIST_TYPE;
             case ALBUM:
                 return AnchorContract.AlbumEntry.CONTENT_LIST_TYPE;
+            case ALBUM_WITH_TIMES:
+                return AnchorContract.AlbumEntry.CONTENT_LIST_WITH_TIMES_TYPE;
             case BOOKMARK:
                 return AnchorContract.BookmarkEntry.CONTENT_LIST_TYPE;
             case DIRECTORY:

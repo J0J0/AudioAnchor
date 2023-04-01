@@ -19,6 +19,7 @@ public class AnchorContract {
 
     static final String PATH_ALBUM = "album";
     static final String PATH_ALBUM_DISTINCT = "album_distinct";
+    static final String PATH_ALBUM_WITH_TIMES = "album_with_times";
 
     static final String PATH_BOOKMARK = "bookmark";
     static final String PATH_BOOKMARK_DISTINCT = "bookmark_distinct";
@@ -55,6 +56,9 @@ public class AnchorContract {
         // Content URI for the album table
         public static final Uri CONTENT_URI = Uri.withAppendedPath(BASE_CONTENT_URI, PATH_ALBUM);
 
+        // Content URI for the album table with augmented album times
+        public static final Uri CONTENT_WITH_TIMES_URI = Uri.withAppendedPath(BASE_CONTENT_URI, PATH_ALBUM_WITH_TIMES);
+
         // The MIME type of the CONTENT_URI for a list of albums.
         static final String CONTENT_LIST_TYPE =
                 ContentResolver.CURSOR_DIR_BASE_TYPE + "/" + CONTENT_AUTHORITY + "/" + PATH_ALBUM;
@@ -63,7 +67,11 @@ public class AnchorContract {
         static final String CONTENT_ITEM_TYPE =
                 ContentResolver.CURSOR_ITEM_BASE_TYPE + "/" + CONTENT_AUTHORITY + "/" + PATH_ALBUM_DISTINCT;
 
-        static final String TABLE_NAME = "albums";
+        // The MIME type of the CONTENT_URI for a list of albums with album times.
+        static final String CONTENT_LIST_WITH_TIMES_TYPE =
+                ContentResolver.CURSOR_DIR_BASE_TYPE + "/" + CONTENT_AUTHORITY + "/" + PATH_ALBUM_WITH_TIMES;
+
+        public static final String TABLE_NAME = "albums";
 
         // The Columns
         public static final String _ID = BaseColumns._ID;
