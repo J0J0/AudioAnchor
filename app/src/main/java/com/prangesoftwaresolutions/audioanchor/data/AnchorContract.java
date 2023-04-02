@@ -48,6 +48,7 @@ public class AnchorContract {
         static final String COLUMN_PATH = "path";
         public static final String COLUMN_TIME = "time";
         public static final String COLUMN_COMPLETED_TIME = "completed_time";
+        public static final String COLUMN_SORT_INDEX = "sort_index";
     }
 
     // Class for the Album Table

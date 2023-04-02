@@ -22,7 +22,7 @@ public class AnchorDbHelper extends SQLiteOpenHelper {
     public static final String DATABASE_NAME = "audio_anchor.db";
 
     // Database version. Must be incremented when the database schema is changed.
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 4;
 
     private static AnchorDbHelper mInstance = null;
     private final Context mContext;
@@ -41,7 +41,8 @@ public class AnchorDbHelper extends SQLiteOpenHelper {
                 + AnchorContract.AudioEntry.COLUMN_ALBUM + " TEXT NOT NULL, "
                 + AnchorContract.AudioEntry.COLUMN_PATH + " TEXT, "
                 + AnchorContract.AudioEntry.COLUMN_TIME + " INTEGER DEFAULT 0, "
-                + AnchorContract.AudioEntry.COLUMN_COMPLETED_TIME + " INTEGER DEFAULT 0);";
+                + AnchorContract.AudioEntry.COLUMN_COMPLETED_TIME + " INTEGER DEFAULT 0, "
+                + AnchorContract.AudioEntry.COLUMN_SORT_INDEX + " INTEGER DEFAULT 0);";
 
         // Create a String that contains the SQL statement to create the album table
         String SQL_CREATE_ALBUM_TABLE = "CREATE TABLE " + AnchorContract.AlbumEntry.TABLE_NAME + " ("
@@ -115,6 +116,11 @@ public class AnchorDbHelper extends SQLiteOpenHelper {
                 String[] selectionArgs = new String[]{String.valueOf(album.getID())};
                 db.update(AnchorContract.AlbumEntry.TABLE_NAME, albumValues, selection, selectionArgs);
             }
+        }
+        if (i < 4) {
+            // Add sort index column to audio file table
+            String SQL_ADD_SORT_INDEX_COLUMN = "ALTER TABLE " + AnchorContract.AudioEntry.TABLE_NAME + " ADD COLUMN " + AnchorContract.AudioEntry.COLUMN_SORT_INDEX + " INTEGER DEFAULT 0";
+            db.execSQL(SQL_ADD_SORT_INDEX_COLUMN);
         }
     }
 

@@ -20,28 +20,36 @@ public class AudioFile implements Serializable {
     private final Album mAlbum;
     private int mTime;
     private int mCompletedTime;
+    private int mSortIndex;
 
     private static final String[] mAudioFileColumns = {
                 AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry._ID,
                 AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_TITLE,
                 AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_ALBUM,
                 AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_TIME,
-                AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_COMPLETED_TIME
+                AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_COMPLETED_TIME,
+                AnchorContract.AudioEntry.TABLE_NAME + "." + AnchorContract.AudioEntry.COLUMN_SORT_INDEX
     };
 
-    private AudioFile(Context context, long id, String title, long albumId, int time, int completedTime) {
+    private AudioFile(Context context, long id, String title, long albumId, int time, int completedTime, int sortIndex) {
         mID = id;
         mTitle = title;
         mAlbum = Album.getAlbumByID(context, albumId);
         mTime = time;
         mCompletedTime = completedTime;
+        mSortIndex = sortIndex;
     }
 
-    public AudioFile(Context context, String title, long albumId) {
+    public AudioFile(Context context, String title, long albumId, int sortIndex) {
         mTitle = title;
         mAlbum = Album.getAlbumByID(context, albumId);
         setTimeFromMetadata();
         mCompletedTime = 0;
+        mSortIndex = sortIndex;
+    }
+
+    public AudioFile(Context context, String title, long albumId) {
+        this(context, title, albumId, 0);
     }
 
     public long getID() {
@@ -68,6 +76,10 @@ public class AudioFile implements Serializable {
 
     public int getCompletedTime() {
         return mCompletedTime;
+    }
+
+    public int getSortIndex() {
+        return mSortIndex;
     }
 
     public String getPath() { return mAlbum.getPath() + File.separator + mTitle; }
@@ -104,6 +116,7 @@ public class AudioFile implements Serializable {
         values.put(AnchorContract.AudioEntry.COLUMN_TITLE, mTitle);
         values.put(AnchorContract.AudioEntry.COLUMN_ALBUM, mAlbum.getID());
         values.put(AnchorContract.AudioEntry.COLUMN_TIME, mTime);
+        values.put(AnchorContract.AudioEntry.COLUMN_SORT_INDEX, mSortIndex);
         Uri uri = context.getContentResolver().insert(AnchorContract.AudioEntry.CONTENT_URI, values);
 
         if (uri == null) {
@@ -174,6 +187,7 @@ public class AudioFile implements Serializable {
         long albumId = c.getLong(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_ALBUM));
         int completedTime = c.getInt(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_COMPLETED_TIME));
         int time = c.getInt(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_TIME));
-        return new AudioFile(context, id, title, albumId, time, completedTime);
+        int sortIndex = c.getInt(c.getColumnIndexOrThrow(AnchorContract.AudioEntry.COLUMN_SORT_INDEX));
+        return new AudioFile(context, id, title, albumId, time, completedTime, sortIndex);
     }
 }

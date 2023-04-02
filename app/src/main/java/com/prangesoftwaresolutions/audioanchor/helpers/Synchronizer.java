@@ -1,9 +1,13 @@
 package com.prangesoftwaresolutions.audioanchor.helpers;
 
 import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.icu.text.Collator;
+import android.icu.text.RuleBasedCollator;
 import android.net.Uri;
+import android.util.Pair;
 import androidx.preference.PreferenceManager;
 import android.widget.Toast;
 
@@ -17,7 +21,12 @@ import com.prangesoftwaresolutions.audioanchor.models.Directory;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 public class Synchronizer {
     private final Context mContext;
@@ -163,37 +172,62 @@ public class Synchronizer {
         if (fileList == null) return;
 
         ArrayList<AudioFile> audioFiles = AudioFile.getAllAudioFilesInAlbum(mContext, albumId, null);
-        LinkedHashMap<String, AudioFile> audioTitles = new LinkedHashMap<>();
-         for (AudioFile audioFile : audioFiles) {
-             audioTitles.put(audioFile.getTitle(), audioFile);
-         }
+        Map<String, AudioFile> audioTitles = new HashMap<>();
+        for (AudioFile audioFile : audioFiles) {
+            audioTitles.put(audioFile.getTitle(), audioFile);
+        }
 
-         // Insert new files into the database
+        RuleBasedCollator collator = (RuleBasedCollator) Collator.getInstance(); // gets collator for default (i.e. host) locale
+        collator.setNumericCollation(true);
+        SortedMap<String, Integer> allFiles = new TreeMap<>(collator);
+        for (String f : fileList) allFiles.put(f, 1);
+        for (String f : audioTitles.keySet()) allFiles.merge(f, 2, Integer::sum);
+
+        boolean keepDeleted = mPrefManager.getBoolean(mContext.getString(R.string.settings_keep_deleted_key), Boolean.getBoolean(mContext.getString(R.string.settings_keep_deleted_default)));
+        boolean showHidden = mPrefManager.getBoolean(mContext.getString(R.string.settings_show_hidden_key), Boolean.getBoolean(mContext.getString(R.string.settings_show_hidden_default)));
         String errorString = null;
-        for (String audioFileName : fileList) {
-            if (!audioTitles.containsKey(audioFileName)) {
-                AudioFile audioFile = new AudioFile(mContext, audioFileName, albumId);
+        Iterator<Map.Entry<String, Integer>> it = allFiles.entrySet().iterator();
+        int sortIndex = 1;
+        while (it.hasNext()) {
+            Map.Entry<String, Integer> entry = it.next();
+            String audioFileName = entry.getKey();
+            int audioFileOrigin  = entry.getValue();
+
+            if (audioFileOrigin == 1) { // file is physically present, but not in database
+                AudioFile audioFile = new AudioFile(mContext, audioFileName, albumId, sortIndex);
                 long id = audioFile.insertIntoDB(mContext);
                 if (id == -1) errorString = albumPath + "/" + audioFileName;
-            } else {
-                audioTitles.remove(audioFileName);
+            } else { // file in database
+                boolean dbEntryDeleted = false;
+
+                if (audioFileOrigin == 2) { // in database, but not in the album directory
+                    if (errorString == null) { // skip removal if some insert failed
+                        if (!keepDeleted || (!showHidden && audioFileName.startsWith("."))) {
+                            long id = audioTitles.get(audioFileName).getID();
+                            Uri uri = ContentUris.withAppendedId(AnchorContract.AudioEntry.CONTENT_URI, id);
+                            mContext.getContentResolver().delete(uri, null, null);
+                            dbEntryDeleted = true;
+                        }
+                    }
+                }
+
+                if (!dbEntryDeleted) {
+                    // Update the sort index in the database if necessary
+                    AudioFile existingFile = audioTitles.get(audioFileName);
+                    if (existingFile.getSortIndex() != sortIndex) {
+                        Uri updateUri = ContentUris.withAppendedId(AnchorContract.AudioEntry.CONTENT_URI, existingFile.getID());
+                        ContentValues values = new ContentValues();
+                        values.put(AnchorContract.AudioEntry.COLUMN_SORT_INDEX, sortIndex);
+                        mContext.getContentResolver().update(updateUri, values, null, null);
+                    }
+                }
             }
+
+            sortIndex++;
         }
         if (errorString != null) {
             errorString = mContext.getResources().getString(R.string.audio_file_error, errorString);
             Toast.makeText(mContext.getApplicationContext(), errorString, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Delete missing or hidden audio files from the database
-        boolean keepDeleted = mPrefManager.getBoolean(mContext.getString(R.string.settings_keep_deleted_key), Boolean.getBoolean(mContext.getString(R.string.settings_keep_deleted_default)));
-        boolean showHidden = mPrefManager.getBoolean(mContext.getString(R.string.settings_show_hidden_key), Boolean.getBoolean(mContext.getString(R.string.settings_show_hidden_default)));
-        for (String title : audioTitles.keySet()) {
-            if (!keepDeleted || (!showHidden && title.startsWith("."))) {
-                long id = audioTitles.get(title).getID();
-                Uri uri = ContentUris.withAppendedId(AnchorContract.AudioEntry.CONTENT_URI, id);
-                mContext.getContentResolver().delete(uri, null, null);
-            }
         }
     }
 }
