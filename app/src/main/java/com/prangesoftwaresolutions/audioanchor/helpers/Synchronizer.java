@@ -21,12 +21,14 @@ import com.prangesoftwaresolutions.audioanchor.models.Directory;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 public class Synchronizer {
     private final Context mContext;
@@ -171,40 +173,46 @@ public class Synchronizer {
 
         if (fileList == null) return;
 
+        // Get all audio files in the database that are associated to the given album
         ArrayList<AudioFile> audioFiles = AudioFile.getAllAudioFilesInAlbum(mContext, albumId, null);
-        Map<String, AudioFile> audioTitles = new HashMap<>();
-        for (AudioFile audioFile : audioFiles) {
-            audioTitles.put(audioFile.getTitle(), audioFile);
-        }
 
+        // Create a collator that sorts "naturally", i.e. 10,11,100 (instead of 10,100,11)
         RuleBasedCollator collator = (RuleBasedCollator) Collator.getInstance(); // gets collator for default (i.e. host) locale
         collator.setNumericCollation(true);
-        SortedMap<String, Integer> allFiles = new TreeMap<>(collator);
-        for (String f : fileList) allFiles.put(f, 1);
-        for (String f : audioTitles.keySet()) allFiles.merge(f, 2, Integer::sum);
+        SortedMap<String, Pair<Boolean,AudioFile>> allFiles = new TreeMap<>(collator);
+        //                     Boolean = "exists in directory?"
+        //                             AudioFile = database data or null
+
+        // Merge fileList's and audioFiles' contents, keeping origin information as the Map's value
+        for (String f : fileList) allFiles.put(f, new Pair<>(true,null));
+        for (AudioFile a : audioFiles) {
+            allFiles.merge(a.getTitle(), new Pair<>(false,a),
+                    (pOld, pNew) -> new Pair<>(pOld.first,pNew.second));
+        }
 
         boolean keepDeleted = mPrefManager.getBoolean(mContext.getString(R.string.settings_keep_deleted_key), Boolean.getBoolean(mContext.getString(R.string.settings_keep_deleted_default)));
         boolean showHidden = mPrefManager.getBoolean(mContext.getString(R.string.settings_show_hidden_key), Boolean.getBoolean(mContext.getString(R.string.settings_show_hidden_default)));
         String errorString = null;
-        Iterator<Map.Entry<String, Integer>> it = allFiles.entrySet().iterator();
+        Iterator<Map.Entry<String, Pair<Boolean,AudioFile>>> it = allFiles.entrySet().iterator();
         int sortIndex = 1;
+        // Iterate over allFiles: create, update or delete database entry as necessary
         while (it.hasNext()) {
-            Map.Entry<String, Integer> entry = it.next();
+            Map.Entry<String, Pair<Boolean,AudioFile>> entry = it.next();
             String audioFileName = entry.getKey();
-            int audioFileOrigin  = entry.getValue();
+            boolean fileInDir = entry.getValue().first;
+            AudioFile dbEntry = entry.getValue().second;
 
-            if (audioFileOrigin == 1) { // file is physically present, but not in database
+            if (fileInDir && isNull(dbEntry)) { // file is physically present, but not in database
                 AudioFile audioFile = new AudioFile(mContext, audioFileName, albumId, sortIndex);
                 long id = audioFile.insertIntoDB(mContext);
                 if (id == -1) errorString = albumPath + "/" + audioFileName;
-            } else { // file in database
+            } else if (nonNull(dbEntry)) { // file in database; NB: the "if" should always be satisfied here
                 boolean dbEntryDeleted = false;
 
-                if (audioFileOrigin == 2) { // in database, but not in the album directory
+                if (!fileInDir) { // in database, but not in the album directory
                     if (errorString == null) { // skip removal if some insert failed
                         if (!keepDeleted || (!showHidden && audioFileName.startsWith("."))) {
-                            long id = audioTitles.get(audioFileName).getID();
-                            Uri uri = ContentUris.withAppendedId(AnchorContract.AudioEntry.CONTENT_URI, id);
+                            Uri uri = ContentUris.withAppendedId(AnchorContract.AudioEntry.CONTENT_URI, dbEntry.getID());
                             mContext.getContentResolver().delete(uri, null, null);
                             dbEntryDeleted = true;
                         }
@@ -213,9 +221,8 @@ public class Synchronizer {
 
                 if (!dbEntryDeleted) {
                     // Update the sort index in the database if necessary
-                    AudioFile existingFile = audioTitles.get(audioFileName);
-                    if (existingFile.getSortIndex() != sortIndex) {
-                        Uri updateUri = ContentUris.withAppendedId(AnchorContract.AudioEntry.CONTENT_URI, existingFile.getID());
+                    if (dbEntry.getSortIndex() != sortIndex) {
+                        Uri updateUri = ContentUris.withAppendedId(AnchorContract.AudioEntry.CONTENT_URI, dbEntry.getID());
                         ContentValues values = new ContentValues();
                         values.put(AnchorContract.AudioEntry.COLUMN_SORT_INDEX, sortIndex);
                         mContext.getContentResolver().update(updateUri, values, null, null);
